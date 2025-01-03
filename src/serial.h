@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-class Serial{
+class Serial {
 public:
     Serial(const std::wstring& portName);
     ~Serial();
