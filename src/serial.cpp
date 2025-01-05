@@ -68,7 +68,7 @@ char Serial::read() {
     char data = 0;
     DWORD bytesRead = 0;
 
-    if (WaitForSingleObject(hSerial, 5000) == WAIT_OBJECT_0) { //Wait 5000ms for data
+    if (WaitForSingleObject(hSerial, 2000) == WAIT_OBJECT_0) { //Wait 2000ms for data
         if (ReadFile(hSerial, &data, 1, &bytesRead, NULL)) {
             if (bytesRead > 0) {
                 return data;
@@ -83,6 +83,15 @@ char Serial::read() {
     }
 
     return 0;
+}
+
+void Serial::flush() {
+    if (isOpen()) {
+        // Purge both the input and output buffers
+        if (!PurgeComm(hSerial, PURGE_RXCLEAR | PURGE_TXCLEAR)) {
+            std::cerr << "Error flushing serial port: " << GetLastError() << std::endl;
+        }
+    }
 }
 
 std::string Serial::readString() {

@@ -5,7 +5,7 @@
  * It is provided strictly for educational use, and any other use must comply with the terms of the license.
  *
  * License: MIT License
- * Copyright (c) 2024 Hubert Borysowski
+ * Copyright (c) 2024-2025 Hubert Borysowski
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
  * and associated documentation files (the "Software"), to deal in the Software without restriction,
