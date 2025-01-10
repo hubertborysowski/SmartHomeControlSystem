@@ -14,7 +14,15 @@ namespace SHMS {
 	Serial serial(portName);
 	char receivedChar = NULL;
 
-
+	char getCommand(System::String^ pin) {
+		if (pin == "PIN 1") return 'A';
+		if (pin == "PIN 2 (PWM)") return 'B';
+		if (pin == "PIN 3") return 'C';
+		if (pin == "PIN 4 (PWM)") return 'D';
+		if (pin == "PIN 5 (PWM)") return 'E';
+		if (pin == "PIN 6") return 'F';
+		return '\0'; // Return null character if no match
+	}
 	
 	/// <summary>
 	/// Summary for MainForm
@@ -25,9 +33,15 @@ namespace SHMS {
 		MainForm(void)
 		{
 			InitializeComponent();
-			if (!serial.open()) {
-				std::cerr << "Failed to open serial port!" << std::endl;
+			try {
+				if (!serial.open()) {
+					char failedToOpenPort = 'e';
+				}
 			}
+			catch (char &failedToOpenPort) {
+				System::Windows::Forms::MessageBox::Show("Failed to open port!", "Error!", System::Windows::Forms::MessageBoxButtons::OK, System::Windows::Forms::MessageBoxIcon::Error);
+			}
+			serial.flush();
 			serial.write('Z');
 		}
 
@@ -37,7 +51,7 @@ namespace SHMS {
 		/// </summary>
 		~MainForm()
 		{
-			serial.write('Z');
+			serial.flush();
 			serial.close();
 			if (components)
 			{
@@ -85,6 +99,8 @@ namespace SHMS {
 	private: System::Windows::Forms::Button^ button1;
 	private: System::Windows::Forms::Button^ BUTTON_SAVE;
 	private: System::Windows::Forms::Button^ BUTTON_EXIT;
+
+
 
 
 
@@ -264,7 +280,7 @@ namespace SHMS {
 			// 
 			// button1
 			// 
-			this->button1->Location = System::Drawing::Point(255, 12);
+			this->button1->Location = System::Drawing::Point(255, 180);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(201, 55);
 			this->button1->TabIndex = 12;
@@ -273,7 +289,7 @@ namespace SHMS {
 			// 
 			// BUTTON_SAVE
 			// 
-			this->BUTTON_SAVE->Location = System::Drawing::Point(255, 94);
+			this->BUTTON_SAVE->Location = System::Drawing::Point(255, 262);
 			this->BUTTON_SAVE->Name = L"BUTTON_SAVE";
 			this->BUTTON_SAVE->Size = System::Drawing::Size(99, 23);
 			this->BUTTON_SAVE->TabIndex = 13;
@@ -282,12 +298,13 @@ namespace SHMS {
 			// 
 			// BUTTON_EXIT
 			// 
-			this->BUTTON_EXIT->Location = System::Drawing::Point(357, 94);
+			this->BUTTON_EXIT->Location = System::Drawing::Point(357, 262);
 			this->BUTTON_EXIT->Name = L"BUTTON_EXIT";
 			this->BUTTON_EXIT->Size = System::Drawing::Size(99, 23);
 			this->BUTTON_EXIT->TabIndex = 14;
 			this->BUTTON_EXIT->Text = L"Exit";
 			this->BUTTON_EXIT->UseVisualStyleBackColor = true;
+			this->BUTTON_EXIT->Click += gcnew System::EventHandler(this, &MainForm::BUTTON_EXIT_Click);
 			// 
 			// MainForm
 			// 
@@ -322,9 +339,11 @@ namespace SHMS {
 		}
 #pragma endregion
 		void handlePin(char pinChar, const std::string expectedText, System::Windows::Forms::Button^ buttonLabel, System::Windows::Forms::ComboBox^ comboBox) {
+			serial.flush();
+			serial.flush();
 			serial.write(pinChar);
-			char receivedChar = serial.read();
-
+			receivedChar = serial.read();
+			
 			// Convert std::string to System::String^ for comparison
 			System::String^ expectedTextCLI = gcnew System::String(expectedText.c_str());
 
@@ -333,126 +352,74 @@ namespace SHMS {
 				buttonLabel->Text = "On";
 				comboBox->ForeColor = System::Drawing::Color::MediumSeaGreen;
 			}
-			else {
+			else if (receivedChar != pinChar && comboBox->Text == expectedTextCLI){
 				buttonLabel->Text = "Off";
 				comboBox->ForeColor = System::Drawing::Color::Coral;
 			}
 		}
 		void updatePins(System::Windows::Forms::Button^ buttonLabel, System::Windows::Forms::ComboBox^ comboBox) {
 			handlePin('A', "PIN 1", buttonLabel, comboBox);
-			handlePin('B', "PIN 2 (PWM)", BUTTON_PIN2_STATE, comboBox2);
-			handlePin('C', "PIN 3", BUTTON_PIN2_STATE, comboBox2);
-			handlePin('D', "PIN 4 (PWM)", BUTTON_PIN2_STATE, comboBox2);
-			handlePin('E', "PIN 5 (PWM)", BUTTON_PIN2_STATE, comboBox2);
-			handlePin('F', "PIN 6", BUTTON_PIN2_STATE, comboBox2);
+			handlePin('B', "PIN 2 (PWM)", buttonLabel, comboBox);
+			handlePin('C', "PIN 3", buttonLabel, comboBox);
+			handlePin('D', "PIN 4 (PWM)", buttonLabel, comboBox);
+			handlePin('E', "PIN 5 (PWM)", buttonLabel, comboBox);
+			handlePin('F', "PIN 6", buttonLabel, comboBox);
 		}
 		private: System::Void MainForm_Load(System::Object^ sender, System::EventArgs^ e) {
 			// The first byte (Z) is being sent in the MainForm class constructor.
-			if (serial.read() == 'Z') {
-				updatePins(BUTTON_PIN1_STATE, comboBox1);
-				serial.write('Z');
-				updatePins(BUTTON_PIN2_STATE, comboBox2);
-				serial.write('Z');
-				updatePins(BUTTON_PIN3_STATE, comboBox3);
-				serial.write('Z');
-				updatePins(BUTTON_PIN4_STATE, comboBox4);
+			try {
+				if (serial.read() == 'Z') {
+					updatePins(BUTTON_PIN1_STATE, comboBox1);
+					serial.write('Z');
+					serial.read();
+					updatePins(BUTTON_PIN2_STATE, comboBox2);
+					serial.write('Z');
+					serial.read();
+					updatePins(BUTTON_PIN3_STATE, comboBox3);
+					serial.write('Z');
+					serial.read();
+					updatePins(BUTTON_PIN4_STATE, comboBox4);
+				}
+				else {
+					char failedToConnect = 'e';
+					throw failedToConnect;
+				}
+			}
+			catch (char &failedToConnect) {
+				System::Windows::Forms::MessageBox::Show("Failed to connect!", "Error!", System::Windows::Forms::MessageBoxButtons::OK, System::Windows::Forms::MessageBoxIcon::Error);
+				std::exit(1);
 			}
 		}
-		private: System::Void BUTTON1_Click(System::Object^ sender, System::EventArgs^ e) {
-			serial.flush();
-			if (BUTTON_PIN1_STATE->Text == "Off" && comboBox1->Text == "PIN 1") {
-				serial.write('A');
-				if (serial.read() == 'A') {
-					BUTTON_PIN1_STATE->Text = "On";
-					comboBox1->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN1_STATE->Text == "On" && comboBox1->Text == "PIN 1") {
-				serial.write('A');
-				if (serial.read() == 'a') {
-					BUTTON_PIN1_STATE->Text = "Off";
-					comboBox1->ForeColor = System::Drawing::Color::Coral;
-				}
-			}
-			else if (BUTTON_PIN1_STATE->Text == "Off" && comboBox1->Text == "PIN 2 (PWM)") {
-				serial.write('B');
-				if (serial.read() == 'B') {
-					BUTTON_PIN1_STATE->Text = "On";
-					comboBox1->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN1_STATE->Text == "On" && comboBox1->Text == "PIN 2 (PWM)") {
-				serial.write('B');
-				if (serial.read() == 'b') {
-					BUTTON_PIN1_STATE->Text = "Off";
-					comboBox1->ForeColor = System::Drawing::Color::Coral;
-				}
 
-			}
-			else if (BUTTON_PIN1_STATE->Text == "Off" && comboBox1->Text == "PIN 3") {
-				serial.write('C');
-				if (serial.read() == 'C') {
-					BUTTON_PIN1_STATE->Text = "On";
-					comboBox1->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN1_STATE->Text == "On" && comboBox1->Text == "PIN 3") {
-				serial.write('C');
-				if (serial.read() == 'c') {
-					BUTTON_PIN1_STATE->Text = "Off";
-					comboBox1->ForeColor = System::Drawing::Color::Coral;
-				}
+		//BUTTON_PIN1_STATE
+		private: System::Void BUTTON1_Click(System::Object^ sender, System::EventArgs^ e) { 
+			System::String^ selectedPin = comboBox1->Text;
+			char command = getCommand(selectedPin);
 
-			}
-			else if (BUTTON_PIN1_STATE->Text == "Off" && comboBox1->Text == "PIN 4 (PWM)") {
-				serial.write('D');
-				if (serial.read() == 'D') {
-					BUTTON_PIN1_STATE->Text = "On";
-					comboBox1->ForeColor = System::Drawing::Color::MediumSeaGreen;
+			if (command != '\0') {
+				serial.flush();
+				if (BUTTON_PIN1_STATE->Text == "Off") {
+					serial.write(command);
+					if (serial.read() == command) {
+						BUTTON_PIN1_STATE->Text = "On";
+						comboBox1->ForeColor = System::Drawing::Color::MediumSeaGreen;
+					}
 				}
-			}
-			else if (BUTTON_PIN1_STATE->Text == "On" && comboBox1->Text == "PIN 4 (PWM)") {
-				serial.write('D');
-				if (serial.read() == 'd') {
-					BUTTON_PIN1_STATE->Text = "Off";
-					comboBox1->ForeColor = System::Drawing::Color::Coral;
+				else if (BUTTON_PIN1_STATE->Text == "On") {
+					serial.write(command);
+					if (serial.read() == tolower(command)) { 
+						BUTTON_PIN1_STATE->Text = "Off";
+						comboBox1->ForeColor = System::Drawing::Color::Coral;
+					}
 				}
-
-			}
-			else if (BUTTON_PIN1_STATE->Text == "Off" && comboBox1->Text == "PIN 5 (PWM)") {
-				serial.write('E');
-				if (serial.read() == 'E') {
-					BUTTON_PIN1_STATE->Text = "On";
-					comboBox1->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN1_STATE->Text == "On" && comboBox1->Text == "PIN 5 (PWM)") {
-				serial.write('E');
-				if (serial.read() == 'e') {
-					BUTTON_PIN1_STATE->Text = "Off";
-					comboBox1->ForeColor = System::Drawing::Color::Coral;
-				}
-
-			}
-			else if (BUTTON_PIN1_STATE->Text == "Off" && comboBox1->Text == "PIN 6") {
-				serial.write('F');
-				if (serial.read() == 'F') {
-					BUTTON_PIN1_STATE->Text = "On";
-					comboBox1->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN1_STATE->Text == "On" && comboBox1->Text == "PIN 6") {
-				serial.write('F');
-				if (serial.read() == 'f') {
-					BUTTON_PIN1_STATE->Text = "Off";
-					comboBox1->ForeColor = System::Drawing::Color::Coral;
-				}
-
 			}
 		}
+		//COMBO 1
 		private: System::Void comboBox1_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 			serial.flush();
+			serial.write('Y');
 			if (comboBox1->Text == "PIN 1") {
+				handlePin('A', "PIN 1", BUTTON_PIN1_STATE, comboBox1);
 				if (comboBox2->Text != "PIN 1" && comboBox3->Text != "PIN 1" && comboBox4->Text != "PIN 1") {
 					BUTTON_PIN1_STATE->Enabled = TRUE;
 				}
@@ -468,6 +435,7 @@ namespace SHMS {
 			
 			}
 			else if (comboBox1->Text == "PIN 2 (PWM)") {
+				handlePin('B', "PIN 2 (PWM)", BUTTON_PIN1_STATE, comboBox1);
 				if (comboBox2->Text != "PIN 5 (PWM)" && comboBox3->Text != "PIN 5 (PWM)" && comboBox4->Text != "PIN 5 (PWM)") {
 					TRACKBAR5->Visible = FALSE;
 				}
@@ -485,6 +453,7 @@ namespace SHMS {
 			
 			}
 			else if (comboBox1->Text == "PIN 3") {
+				handlePin('C', "PIN 3", BUTTON_PIN1_STATE, comboBox1);
 				if (comboBox2->Text != "PIN 3" && comboBox3->Text != "PIN 3" && comboBox4->Text != "PIN 3") {
 					BUTTON_PIN1_STATE->Enabled = TRUE;
 				}
@@ -502,6 +471,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox1->Text == "PIN 4 (PWM)") {
+				handlePin('D', "PIN 4 (PWM)", BUTTON_PIN1_STATE, comboBox1);
 				if (comboBox2->Text != "PIN 2 (PWM)" && comboBox3->Text != "PIN 2 (PWM)" && comboBox4->Text != "PIN 2 (PWM)") {
 					TRACKBAR2->Visible = FALSE;
 				}
@@ -518,6 +488,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox1->Text == "PIN 5 (PWM)") {
+				handlePin('E', "PIN 5 (PWM)", BUTTON_PIN1_STATE, comboBox1);
 				if (comboBox2->Text != "PIN 2 (PWM)" && comboBox3->Text != "PIN 2 (PWM)" && comboBox4->Text != "PIN 2 (PWM)") {
 					TRACKBAR2->Visible = FALSE;
 				}
@@ -534,6 +505,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox1->Text == "PIN 6") {
+				handlePin('F', "PIN 6", BUTTON_PIN1_STATE, comboBox1);
 				if (comboBox2->Text != "PIN 6" && comboBox3->Text != "PIN 6" && comboBox4->Text != "PIN 6") {
 					BUTTON_PIN1_STATE->Enabled = TRUE;
 				}
@@ -554,9 +526,12 @@ namespace SHMS {
 		private: System::Void TRACKBAR2_Scroll(System::Object^ sender, System::EventArgs^ e) { //TRACKBAR 2
 			serial.flush();
 		}
+		//COMBO 2
 		private: System::Void comboBox2_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 			serial.flush();
+			serial.write('Y');
 			if (comboBox2->Text == "PIN 1") {
+				handlePin('A', "PIN 1", BUTTON_PIN2_STATE, comboBox2);
 				if (comboBox1->Text != "PIN 1" && comboBox3->Text != "PIN 1" && comboBox4->Text != "PIN 1") {
 					BUTTON_PIN2_STATE->Enabled = TRUE;
 				}
@@ -575,6 +550,7 @@ namespace SHMS {
 
 			}
 			else if (comboBox2->Text == "PIN 2 (PWM)") {
+				handlePin('B', "PIN 2 (PWM)", BUTTON_PIN2_STATE, comboBox2);
 				if (comboBox1->Text != "PIN 5 (PWM)" && comboBox3->Text != "PIN 5 (PWM)" && comboBox4->Text != "PIN 5 (PWM)") {
 					TRACKBAR5->Visible = FALSE;
 				}
@@ -595,6 +571,7 @@ namespace SHMS {
 
 			}
 			else if (comboBox2->Text == "PIN 3") {
+				handlePin('C', "PIN 3", BUTTON_PIN2_STATE, comboBox2);
 				if (comboBox1->Text != "PIN 3" && comboBox3->Text != "PIN 3" && comboBox4->Text != "PIN 3") {
 					BUTTON_PIN2_STATE->Enabled = TRUE;
 				}
@@ -612,6 +589,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox2->Text == "PIN 4 (PWM)") {
+				handlePin('D', "PIN 4 (PWM)", BUTTON_PIN2_STATE, comboBox2);
 				if (comboBox1->Text != "PIN 2 (PWM)" && comboBox3->Text != "PIN 2 (PWM)" && comboBox4->Text != "PIN 2 (PWM)") {
 					TRACKBAR2->Visible = FALSE;
 				}
@@ -628,6 +606,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox2->Text == "PIN 5 (PWM)") {
+				handlePin('E', "PIN 5 (PWM)", BUTTON_PIN2_STATE, comboBox2);
 				if (comboBox1->Text != "PIN 2 (PWM)" && comboBox3->Text != "PIN 2 (PWM)" && comboBox4->Text != "PIN 2 (PWM)") {
 					TRACKBAR2->Visible = FALSE;
 				}
@@ -644,6 +623,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox2->Text == "PIN 6") {
+				handlePin('F', "PIN 6", BUTTON_PIN2_STATE, comboBox2);
 				if (comboBox1->Text != "PIN 6" && comboBox3->Text != "PIN 6" && comboBox4->Text != "PIN 6") {
 					BUTTON_PIN2_STATE->Enabled = TRUE;
 				}
@@ -661,104 +641,39 @@ namespace SHMS {
 				}
 			}
 		}
-		private: System::Void button1_Click_1(System::Object^ sender, System::EventArgs^ e) {
-			serial.flush();
-			if (BUTTON_PIN2_STATE->Text == "Off" && comboBox2->Text == "PIN 1") {
-				serial.write('A');
-				if (serial.read() == 'A') {
-					BUTTON_PIN2_STATE->Text = "On";
-					comboBox2->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN2_STATE->Text == "On" && comboBox2->Text == "PIN 1") {
-				serial.write('A');
-				if (serial.read() == 'a') {
-					BUTTON_PIN2_STATE->Text = "Off";
-					comboBox2->ForeColor = System::Drawing::Color::Coral;
-				}
-			}
-			else if (BUTTON_PIN2_STATE->Text == "Off" && comboBox2->Text == "PIN 2 (PWM)") {
-				serial.write('B');
-				if (serial.read() == 'B') {
-					BUTTON_PIN2_STATE->Text = "On";
-					comboBox2->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN2_STATE->Text == "On" && comboBox2->Text == "PIN 2 (PWM)") {
-				serial.write('B');
-				if (serial.read() == 'b') {
-					BUTTON_PIN2_STATE->Text = "Off";
-					comboBox2->ForeColor = System::Drawing::Color::Coral;
-				}
 
-			}
-			else if (BUTTON_PIN2_STATE->Text == "Off" && comboBox2->Text == "PIN 3") {
-				serial.write('C');
-				if (serial.read() == 'C') {
-					BUTTON_PIN2_STATE->Text = "On";
-					comboBox2->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN2_STATE->Text == "On" && comboBox2->Text == "PIN 3") {
-				serial.write('C');
-				if (serial.read() == 'c') {
-					BUTTON_PIN2_STATE->Text = "Off";
-					comboBox2->ForeColor = System::Drawing::Color::Coral;
-				}
+		//BUTTON_PIN2_STATE
+		private: System::Void button1_Click_1(System::Object^ sender, System::EventArgs^ e) { 
+			System::String^ selectedPin = comboBox2->Text;
+			char command = getCommand(selectedPin);
 
-			}
-			else if (BUTTON_PIN2_STATE->Text == "Off" && comboBox2->Text == "PIN 4 (PWM)") {
-				serial.write('D');
-				if (serial.read() == 'D') {
-					BUTTON_PIN2_STATE->Text = "On";
-					comboBox2->ForeColor = System::Drawing::Color::MediumSeaGreen;
+			if (command != '\0') {
+				serial.flush();
+				if (BUTTON_PIN2_STATE->Text == "Off") {
+					serial.write(command);
+					if (serial.read() == command) {
+						BUTTON_PIN2_STATE->Text = "On";
+						comboBox2->ForeColor = System::Drawing::Color::MediumSeaGreen;
+					}
 				}
-			}
-			else if (BUTTON_PIN2_STATE->Text == "On" && comboBox2->Text == "PIN 4 (PWM)") {
-				serial.write('D');
-				if (serial.read() == 'd') {
-					BUTTON_PIN2_STATE->Text = "Off";
-					comboBox2->ForeColor = System::Drawing::Color::Coral;
+				else if (BUTTON_PIN2_STATE->Text == "On") {
+					serial.write(command);
+					if (serial.read() == tolower(command)) {
+						BUTTON_PIN2_STATE->Text = "Off";
+						comboBox2->ForeColor = System::Drawing::Color::Coral;
+					}
 				}
-
-			}
-			else if (BUTTON_PIN2_STATE->Text == "Off" && comboBox2->Text == "PIN 5 (PWM)") {
-				serial.write('E');
-				if (serial.read() == 'E') {
-					BUTTON_PIN2_STATE->Text = "On";
-					comboBox2->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN2_STATE->Text == "On" && comboBox2->Text == "PIN 5 (PWM)") {
-				serial.write('E');
-				if (serial.read() == 'e') {
-					BUTTON_PIN2_STATE->Text = "Off";
-					comboBox2->ForeColor = System::Drawing::Color::Coral;
-				}
-
-			}
-			else if (BUTTON_PIN2_STATE->Text == "Off" && comboBox2->Text == "PIN 6") {
-				serial.write('F');
-				if (serial.read() == 'F') {
-					BUTTON_PIN2_STATE->Text = "On";
-					comboBox2->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN2_STATE->Text == "On" && comboBox2->Text == "PIN 6") {
-				serial.write('F');
-				if (serial.read() == 'f') {
-					BUTTON_PIN2_STATE->Text = "Off";
-					comboBox2->ForeColor = System::Drawing::Color::Coral;
-				}
-
 			}
 		}
 		private: System::Void trackBar1_Scroll(System::Object^ sender, System::EventArgs^ e) { //TRACKBAR 4
 			serial.flush();
 		}
+		//COMBO 3
 		private: System::Void comboBox3_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 			serial.flush();
+			serial.write('Y');
 			if (comboBox3->Text == "PIN 1") {
+				handlePin('A', "PIN 1", BUTTON_PIN3_STATE, comboBox3);
 				if (comboBox1->Text != "PIN 1" && comboBox2->Text != "PIN 1" && comboBox4->Text != "PIN 1") {
 					BUTTON_PIN3_STATE->Enabled = TRUE;
 				}
@@ -777,6 +692,7 @@ namespace SHMS {
 
 			}
 			else if (comboBox3->Text == "PIN 2 (PWM)") {
+				handlePin('B', "PIN 2 (PWM)", BUTTON_PIN3_STATE, comboBox3);
 				if (comboBox1->Text != "PIN 5 (PWM)" && comboBox2->Text != "PIN 5 (PWM)" && comboBox4->Text != "PIN 5 (PWM)") {
 					TRACKBAR5->Visible = FALSE;
 				}
@@ -794,6 +710,7 @@ namespace SHMS {
 
 			}
 			else if (comboBox3->Text == "PIN 3") {
+				handlePin('C', "PIN 3", BUTTON_PIN3_STATE, comboBox3);
 				if (comboBox1->Text != "PIN 3" && comboBox2->Text != "PIN 3" && comboBox4->Text != "PIN 3") {
 					BUTTON_PIN3_STATE->Enabled = TRUE;
 				}
@@ -811,6 +728,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox3->Text == "PIN 4 (PWM)") {
+				handlePin('D', "PIN 4 (PWM)", BUTTON_PIN3_STATE, comboBox3);
 				if (comboBox1->Text != "PIN 2 (PWM)" && comboBox2->Text != "PIN 2 (PWM)" && comboBox4->Text != "PIN 2 (PWM)") {
 					TRACKBAR2->Visible = FALSE;
 				}
@@ -827,6 +745,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox3->Text == "PIN 5 (PWM)") {
+				handlePin('E', "PIN 5 (PWM)", BUTTON_PIN3_STATE, comboBox3);
 				if (comboBox1->Text != "PIN 2 (PWM)" && comboBox2->Text != "PIN 2 (PWM)" && comboBox4->Text != "PIN 2 (PWM)") {
 					TRACKBAR2->Visible = FALSE;
 				}
@@ -843,6 +762,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox3->Text == "PIN 6") {
+				handlePin('F', "PIN 6", BUTTON_PIN3_STATE, comboBox3);
 				if (comboBox1->Text != "PIN 6" && comboBox2->Text != "PIN 6" && comboBox4->Text != "PIN 6") {
 					BUTTON_PIN3_STATE->Enabled = TRUE;
 				}
@@ -860,104 +780,39 @@ namespace SHMS {
 				}
 			}
 		}
+
+		//BUTTON_PIN3_STATE
 		private: System::Void button2_Click(System::Object^ sender, System::EventArgs^ e) {
-			serial.flush();
-			if (BUTTON_PIN3_STATE->Text == "Off" && comboBox3->Text == "PIN 1") {
-				serial.write('A');
-				if (serial.read() == 'A') {
-					BUTTON_PIN3_STATE->Text = "On";
-					comboBox3->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN3_STATE->Text == "On" && comboBox3->Text == "PIN 1") {
-				serial.write('A');
-				if (serial.read() == 'a') {
-					BUTTON_PIN3_STATE->Text = "Off";
-					comboBox3->ForeColor = System::Drawing::Color::Coral;
-				}
-			}
-			else if (BUTTON_PIN3_STATE->Text == "Off" && comboBox3->Text == "PIN 2 (PWM)") {
-				serial.write('B');
-				if (serial.read() == 'B') {
-					BUTTON_PIN3_STATE->Text = "On";
-					comboBox3->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN3_STATE->Text == "On" && comboBox3->Text == "PIN 2 (PWM)") {
-				serial.write('B');
-				if (serial.read() == 'b') {
-					BUTTON_PIN3_STATE->Text = "Off";
-					comboBox3->ForeColor = System::Drawing::Color::Coral;
-				}
+			System::String^ selectedPin = comboBox3->Text;
+			char command = getCommand(selectedPin);
 
-			}
-			else if (BUTTON_PIN3_STATE->Text == "Off" && comboBox3->Text == "PIN 3") {
-				serial.write('C');
-				if (serial.read() == 'C') {
-					BUTTON_PIN3_STATE->Text = "On";
-					comboBox3->ForeColor = System::Drawing::Color::MediumSeaGreen;
+			if (command != '\0') {
+				serial.flush();
+				if (BUTTON_PIN3_STATE->Text == "Off") {
+					serial.write(command);
+					if (serial.read() == command) {
+						BUTTON_PIN3_STATE->Text = "On";
+						comboBox3->ForeColor = System::Drawing::Color::MediumSeaGreen;
+					}
 				}
-			}
-			else if (BUTTON_PIN3_STATE->Text == "On" && comboBox3->Text == "PIN 3") {
-				serial.write('C');
-				if (serial.read() == 'c') {
-					BUTTON_PIN3_STATE->Text = "Off";
-					comboBox3->ForeColor = System::Drawing::Color::Coral;
+				else if (BUTTON_PIN3_STATE->Text == "On") {
+					serial.write(command);
+					if (serial.read() == tolower(command)) {
+						BUTTON_PIN3_STATE->Text = "Off";
+						comboBox3->ForeColor = System::Drawing::Color::Coral;
+					}
 				}
-
-			}
-			else if (BUTTON_PIN3_STATE->Text == "Off" && comboBox3->Text == "PIN 4 (PWM)") {
-				serial.write('D');
-				if (serial.read() == 'D') {
-					BUTTON_PIN3_STATE->Text = "On";
-					comboBox3->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN3_STATE->Text == "On" && comboBox3->Text == "PIN 4 (PWM)") {
-				serial.write('D');
-				if (serial.read() == 'd') {
-					BUTTON_PIN3_STATE->Text = "Off";
-					comboBox3->ForeColor = System::Drawing::Color::Coral;
-				}
-
-			}
-			else if (BUTTON_PIN3_STATE->Text == "Off" && comboBox3->Text == "PIN 5 (PWM)") {
-				serial.write('E');
-				if (serial.read() == 'E') {
-					BUTTON_PIN3_STATE->Text = "On";
-					comboBox3->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN3_STATE->Text == "On" && comboBox3->Text == "PIN 5 (PWM)") {
-				serial.write('E');
-				if (serial.read() == 'e') {
-					BUTTON_PIN3_STATE->Text = "Off";
-					comboBox3->ForeColor = System::Drawing::Color::Coral;
-				}
-
-			}
-			else if (BUTTON_PIN3_STATE->Text == "Off" && comboBox3->Text == "PIN 6") {
-				serial.write('F');
-				if (serial.read() == 'F') {
-					BUTTON_PIN3_STATE->Text = "On";
-					comboBox3->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN3_STATE->Text == "On" && comboBox3->Text == "PIN 6") {
-				serial.write('F');
-				if (serial.read() == 'f') {
-					BUTTON_PIN3_STATE->Text = "Off";
-					comboBox3->ForeColor = System::Drawing::Color::Coral;
-				}
-
 			}
 		}
 		private: System::Void trackBar3_Scroll(System::Object^ sender, System::EventArgs^ e) { //TRACKBAR 5
 			serial.flush();
 		}
+		//COMBO 4
 		private: System::Void comboBox4_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 			serial.flush();
+			serial.write('Y');
 			if (comboBox4->Text == "PIN 1") {
+				handlePin('A', "PIN 1", BUTTON_PIN4_STATE, comboBox4);
 				if (comboBox1->Text != "PIN 1" && comboBox2->Text != "PIN 1" && comboBox3->Text != "PIN 1") {
 					BUTTON_PIN4_STATE->Enabled = TRUE;
 				}
@@ -976,6 +831,7 @@ namespace SHMS {
 
 			}
 			else if (comboBox4->Text == "PIN 2 (PWM)") {
+				handlePin('B', "PIN 2 (PWM)", BUTTON_PIN4_STATE, comboBox4);
 				if (comboBox1->Text != "PIN 5 (PWM)" && comboBox2->Text != "PIN 5 (PWM)" && comboBox3->Text != "PIN 5 (PWM)") {
 					TRACKBAR5->Visible = FALSE;
 				}
@@ -993,6 +849,7 @@ namespace SHMS {
 
 			}
 			else if (comboBox4->Text == "PIN 3") {
+				handlePin('C', "PIN 3", BUTTON_PIN4_STATE, comboBox4);
 				if (comboBox1->Text != "PIN 3" && comboBox2->Text != "PIN 3" && comboBox3->Text != "PIN 3") {
 					BUTTON_PIN4_STATE->Enabled = TRUE;
 				}
@@ -1010,6 +867,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox4->Text == "PIN 4 (PWM)") {
+				handlePin('D', "PIN 4 (PWM)", BUTTON_PIN4_STATE, comboBox4);
 				if (comboBox1->Text != "PIN 2 (PWM)" && comboBox2->Text != "PIN 2 (PWM)" && comboBox3->Text != "PIN 2 (PWM)") {
 					TRACKBAR2->Visible = FALSE;
 				}
@@ -1026,6 +884,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox4->Text == "PIN 5 (PWM)") {
+				handlePin('E', "PIN 5 (PWM)", BUTTON_PIN4_STATE, comboBox4);
 				if (comboBox1->Text != "PIN 2 (PWM)" && comboBox2->Text != "PIN 2 (PWM)" && comboBox3->Text != "PIN 2 (PWM)") {
 					TRACKBAR2->Visible = FALSE;
 				}
@@ -1042,6 +901,7 @@ namespace SHMS {
 				}
 			}
 			else if (comboBox4->Text == "PIN 6") {
+				handlePin('F', "PIN 6", BUTTON_PIN4_STATE, comboBox4);
 				if (comboBox1->Text != "PIN 6" && comboBox2->Text != "PIN 6" && comboBox3->Text != "PIN 6") {
 					BUTTON_PIN4_STATE->Enabled = TRUE;
 				}
@@ -1059,97 +919,32 @@ namespace SHMS {
 				}
 			}
 		}
+
+		//BUTTON_PIN4_STATE
 		private: System::Void button3_Click(System::Object^ sender, System::EventArgs^ e) {
-			serial.flush();
-			if (BUTTON_PIN4_STATE->Text == "Off" && comboBox4->Text == "PIN 1") {
-				serial.write('A');
-				if (serial.read() == 'A') {
-					BUTTON_PIN4_STATE->Text = "On";
-					comboBox4->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN4_STATE->Text == "On" && comboBox4->Text == "PIN 1") {
-				serial.write('A');
-				if (serial.read() == 'a') {
-					BUTTON_PIN4_STATE->Text = "Off";
-					comboBox4->ForeColor = System::Drawing::Color::Coral;
-				}
-			}
-			else if (BUTTON_PIN4_STATE->Text == "Off" && comboBox4->Text == "PIN 2 (PWM)") {
-				serial.write('B');
-				if (serial.read() == 'B') {
-					BUTTON_PIN4_STATE->Text = "On";
-					comboBox4->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN4_STATE->Text == "On" && comboBox4->Text == "PIN 2 (PWM)") {
-				serial.write('B');
-				if (serial.read() == 'b') {
-					BUTTON_PIN4_STATE->Text = "Off";
-					comboBox4->ForeColor = System::Drawing::Color::Coral;
-				}
+			System::String^ selectedPin = comboBox4->Text;
+			char command = getCommand(selectedPin);
 
-			}
-			else if (BUTTON_PIN4_STATE->Text == "Off" && comboBox4->Text == "PIN 3") {
-				serial.write('C');
-				if (serial.read() == 'C') {
-					BUTTON_PIN4_STATE->Text = "On";
-					comboBox4->ForeColor = System::Drawing::Color::MediumSeaGreen;
+			if (command != '\0') {
+				serial.flush();
+				if (BUTTON_PIN4_STATE->Text == "Off") {
+					serial.write(command);
+					if (serial.read() == command) {
+						BUTTON_PIN4_STATE->Text = "On";
+						comboBox4->ForeColor = System::Drawing::Color::MediumSeaGreen;
+					}
 				}
-			}
-			else if (BUTTON_PIN4_STATE->Text == "On" && comboBox4->Text == "PIN 3") {
-				serial.write('C');
-				if (serial.read() == 'c') {
-					BUTTON_PIN3_STATE->Text = "Off";
-					comboBox4->ForeColor = System::Drawing::Color::Coral;
+				else if (BUTTON_PIN4_STATE->Text == "On") {
+					serial.write(command);
+					if (serial.read() == tolower(command)) {
+						BUTTON_PIN4_STATE->Text = "Off";
+						comboBox4->ForeColor = System::Drawing::Color::Coral;
+					}
 				}
-
-			}
-			else if (BUTTON_PIN4_STATE->Text == "Off" && comboBox4->Text == "PIN 4 (PWM)") {
-				serial.write('D');
-				if (serial.read() == 'D') {
-					BUTTON_PIN4_STATE->Text = "On";
-					comboBox4->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN4_STATE->Text == "On" && comboBox4->Text == "PIN 4 (PWM)") {
-				serial.write('D');
-				if (serial.read() == 'd') {
-					BUTTON_PIN4_STATE->Text = "Off";
-					comboBox4->ForeColor = System::Drawing::Color::Coral;
-				}
-
-			}
-			else if (BUTTON_PIN4_STATE->Text == "Off" && comboBox4->Text == "PIN 5 (PWM)") {
-				serial.write('E');
-				if (serial.read() == 'E') {
-					BUTTON_PIN4_STATE->Text = "On";
-					comboBox4->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN4_STATE->Text == "On" && comboBox4->Text == "PIN 5 (PWM)") {
-				serial.write('E');
-				if (serial.read() == 'e') {
-					BUTTON_PIN4_STATE->Text = "Off";
-					comboBox4->ForeColor = System::Drawing::Color::Coral;
-				}
-
-			}
-			else if (BUTTON_PIN4_STATE->Text == "Off" && comboBox4->Text == "PIN 6") {
-				serial.write('F');
-				if (serial.read() == 'F') {
-					BUTTON_PIN4_STATE->Text = "On";
-					comboBox4->ForeColor = System::Drawing::Color::MediumSeaGreen;
-				}
-			}
-			else if (BUTTON_PIN4_STATE->Text == "On" && comboBox4->Text == "PIN 6") {
-				serial.write('F');
-				if (serial.read() == 'f') {
-					BUTTON_PIN4_STATE->Text = "Off";
-					comboBox4->ForeColor = System::Drawing::Color::Coral;
-				}
-
 			}
 		}
-	};
+	private: System::Void BUTTON_EXIT_Click(System::Object^ sender, System::EventArgs^ e) {
+		std::exit(0);
+	}
+};
 }

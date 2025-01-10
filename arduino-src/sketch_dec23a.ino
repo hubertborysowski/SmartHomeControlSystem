@@ -4,6 +4,13 @@ class BasePin{
   BasePin() : check(true){}
   virtual ~BasePin(){}
   virtual void receiveData() = 0;
+
+  bool operator==(const BasePin& other) const {
+    return this == &other;
+  }
+  bool operator!=(const BasePin& other) const {
+    return this != &other; 
+  }
 };
 class DPin2 : public BasePin{
   public:
@@ -186,12 +193,12 @@ class DPin7 : public BasePin{
   }
 };
 BasePin* wsk = nullptr;
-static DPin2 obj2;
-static DPin3 obj3;
-static DPin4 obj4;
-static DPin5 obj5;
-static DPin6 obj6;
-static DPin7 obj7;
+static DPin2 pin2;
+static DPin3 pin3;
+static DPin4 pin4;
+static DPin5 pin5;
+static DPin6 pin6;
+static DPin7 pin7;
 void setup() {
   Serial.begin(9600);
   delay(1000);  // Allow time for serial communication to initialize.
@@ -203,51 +210,93 @@ void setup() {
   pinMode(7, OUTPUT);
 }
 void resetAllPins() {
-  obj2.check = true;
-  obj3.check = true;
-  obj4.check = true;
-  obj5.check = true;
-  obj6.check = true;
-  obj7.check = true;
+  pin2.check = true;
+  pin3.check = true;
+  pin4.check = true;
+  pin5.check = true;
+  pin6.check = true;
+  pin7.check = true;
 }
+void resetSinglePin(){
+  if (*wsk == pin2) pin2.check = true;
+  if (*wsk == pin3) pin3.check = true;
+  if (*wsk == pin4) pin4.check = true;
+  if (*wsk == pin5) pin5.check = true;
+  if (*wsk == pin6) pin6.check = true;
+  if (*wsk == pin7) pin7.check = true;
+}
+char bajt;
+bool singlePinCheck;
 void loop() {
   if(Serial.available()){
-    switch(Serial.read()){
+    bajt = Serial.read();
+    if(bajt == 'Y'){
+      singlePinCheck = true;
+      bajt = Serial.read();
+    }
+    switch(bajt){
       case 'A':
-        wsk = &obj2;
+        wsk = &pin2;
         if (wsk != nullptr){
+          if(singlePinCheck){
+            resetSinglePin();
+            singlePinCheck = false;
+          }
           wsk->receiveData();
         }
         break;
       case 'B':
-        wsk = &obj3;
+        wsk = &pin3;
         if (wsk != nullptr){
+          if(singlePinCheck){
+            resetSinglePin();
+            singlePinCheck = false;
+          }
           wsk->receiveData();
         }
         break;
       case 'C':
-        wsk = &obj4;
+        wsk = &pin4;
         if (wsk != nullptr){
+          if(singlePinCheck){
+            resetSinglePin();
+            singlePinCheck = false;
+          }
           wsk->receiveData();
         }
         break;
       case 'D':
-        wsk = &obj5;
+        wsk = &pin5;
         if (wsk != nullptr){
+          if(singlePinCheck){
+            resetSinglePin();
+            singlePinCheck = false;
+          }
           wsk->receiveData();
         }
         break;
       case 'E':
-        wsk = &obj6;
+        wsk = &pin6;
         if (wsk != nullptr){
+          if(singlePinCheck){
+            resetSinglePin();
+            singlePinCheck = false;
+          }
           wsk->receiveData();
         }
         break;
       case 'F':
-        wsk = &obj7;
+        wsk = &pin7;
         if (wsk != nullptr){
+          if(singlePinCheck){
+            resetSinglePin();
+            singlePinCheck = false;
+          }
           wsk->receiveData();
         }
+        break;
+      case 'Y':
+        singlePinCheck = false;
         break;
       case 'Z':
         Serial.write('Z');
