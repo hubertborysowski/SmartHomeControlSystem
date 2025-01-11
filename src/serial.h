@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-class Serial{
+class Serial {
 public:
     Serial(const std::wstring& portName);
     ~Serial();
@@ -12,10 +12,11 @@ public:
     bool open();
     void close();
     bool isOpen() const;
-    void write(char data);  // Existing function to write a single byte
-    void write(const std::string& data);  // New function to send a string
-    char read();  // Existing function to read a single byte
-    std::string readString();  // New function to read an entire string
+    void write(char data);  // Method to write a single byte
+    void write(const std::string& data);  // Method to send a string
+    char read();  // Method to read a single byte
+    void flush();
+    std::string readString();  // Method to read an entire string
 
 private:
     std::wstring portName;
