@@ -15,6 +15,7 @@ The following characters have been assigned for communication:
 - 'e': Digital pin 6 (PWM) (off)
 - 'F': Digital pin 7
 - 'f': Digital pin 7 (off)
+
 In addition, other characters have been used to activate individual functions:
 - '+': Enable PWM increase function.
 - '-': Enable PWM decrease function.
