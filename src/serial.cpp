@@ -27,7 +27,7 @@ bool Serial::open() {
         return false;
     }
 
-    dcbSerialParams.BaudRate = CBR_9600;
+    dcbSerialParams.BaudRate = CBR_115200;
     dcbSerialParams.ByteSize = 8;
     dcbSerialParams.StopBits = ONESTOPBIT;
     dcbSerialParams.Parity = NOPARITY;
@@ -101,7 +101,8 @@ std::string Serial::readString() {
     while (true) {
         c = read();
         if (c == 0) break;  // Timeout or error
-        if (c == '\n') break;  // End of string
+        if (c == '\n') break; // End of string
+        if (c == '\0') break; // End of string
         data += c;  // Append character to string
     }
 

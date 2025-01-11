@@ -1,3 +1,16 @@
+#include <Wire.h>
+#include <Adafruit_AHTX0.h>  // Library for AHT20
+#include <Adafruit_BMP280.h> // Library for BMP280
+Adafruit_AHTX0 aht;          // AHT20 object
+Adafruit_BMP280 bmp;         // BMP280 object
+char bajt;
+bool singlePinCheck = false;
+bool pwmUp = false;
+bool pwmDown = false;
+bool sensorConnected = true;
+String temperatureString = "";
+String humidityString = "";
+String pressureString = "";
 class BasePin{
   public:
   bool check;
@@ -19,26 +32,26 @@ class DPin2 : public BasePin{
   DPin2(){}
   ~DPin2(){}
   void receiveData(){
-      if(check){
-        if(pinState == LOW){
-          Serial.write('a');
-        }
-        else if(pinState == HIGH){
-          Serial.write('A');
-        } 
-        check = false;
-      }
-      else if(pinState == LOW){
-        digitalWrite(pinNumber, HIGH);
-        Serial.write('A');
-        pinState = HIGH;
-        delay(100);
+    if(check){
+      if(pinState == LOW){
+        Serial.write('a');
       }
       else if(pinState == HIGH){
-        digitalWrite(pinNumber, LOW);
-        Serial.write('a');
-        pinState = LOW;
-        delay(100);
+        Serial.write('A');
+      } 
+      check = false;
+    }
+    else if(pinState == LOW){
+      digitalWrite(pinNumber, HIGH);
+      Serial.write('A');
+      pinState = HIGH;
+      delay(100);
+    }
+    else if(pinState == HIGH){
+      digitalWrite(pinNumber, LOW);
+      Serial.write('a');
+      pinState = LOW;
+      delay(100);
     }
   }
 };
@@ -46,6 +59,7 @@ class DPin3 : public BasePin{
   public:
   uint8_t pinNumber = 3;
   uint8_t pinState = LOW;
+  int pwmValue = 0;
   DPin3(){}
   ~DPin3(){}
   void receiveData(){
@@ -58,14 +72,24 @@ class DPin3 : public BasePin{
         } 
         check = false;
       }
+      else if(pwmUp){
+        if(pwmValue < 232) pwmValue += 29;
+        else if(pwmValue == 232) pwmValue = 255; 
+        if(pinState == HIGH) analogWrite(pinNumber, pwmValue); 
+      }
+      else if(pwmDown){
+        if(pwmValue == 255) pwmValue = 232;
+        else if(pwmValue > 28) pwmValue -= 29;
+        if(pinState == HIGH) analogWrite(pinNumber, pwmValue); 
+      }
       else if(pinState == LOW){
-        digitalWrite(pinNumber, HIGH);
+        analogWrite(pinNumber, pwmValue);
         Serial.write('B');
         pinState = HIGH;
         delay(100);
       }
       else if(pinState == HIGH){
-        digitalWrite(pinNumber, LOW);
+        analogWrite(pinNumber, 0);
         Serial.write('b');
         pinState = LOW;
         delay(100);
@@ -106,6 +130,7 @@ class DPin5 : public BasePin{
   public:
   uint8_t pinNumber = 5;
   uint8_t pinState = LOW;
+  int pwmValue = 0;
   DPin5(){}
   ~DPin5(){}
   void receiveData(){
@@ -118,14 +143,22 @@ class DPin5 : public BasePin{
         } 
         check = false;
       }
+      else if(pwmUp){
+        if(pwmValue < 261) pwmValue += 29;
+        if(pinState == HIGH) analogWrite(pinNumber, pwmValue); 
+      }
+      else if(pwmDown){
+        if(pwmValue > 28) pwmValue -= 29;
+        if(pinState == HIGH) analogWrite(pinNumber, pwmValue); 
+      }
       else if(pinState == LOW){
-        digitalWrite(pinNumber, HIGH);
+        analogWrite(pinNumber, pwmValue); 
         Serial.write('D');
         pinState = HIGH;
         delay(100);
       }
       else if(pinState == HIGH){
-        digitalWrite(pinNumber, LOW);
+        analogWrite(pinNumber, 0); 
         Serial.write('d');
         pinState = LOW;
         delay(100);
@@ -136,6 +169,7 @@ class DPin6 : public BasePin{
   public:
   uint8_t pinNumber = 6;
   uint8_t pinState = LOW;
+  int pwmValue = 0;
   DPin6(){}
   ~DPin6(){}
   void receiveData(){
@@ -148,14 +182,22 @@ class DPin6 : public BasePin{
         } 
         check = false;
       }
+      else if(pwmUp){
+        if(pwmValue < 261) pwmValue += 29;
+        if(pinState == HIGH) analogWrite(pinNumber, pwmValue); 
+      }
+      else if(pwmDown){
+        if(pwmValue > 28) pwmValue -= 29;
+        if(pinState == HIGH) analogWrite(pinNumber, pwmValue); 
+      }
       else if(pinState == LOW){
-        digitalWrite(pinNumber, HIGH);
+        analogWrite(pinNumber, pwmValue); 
         Serial.write('E');
         pinState = HIGH;
         delay(100);
       }
       else if(pinState == HIGH){
-        digitalWrite(pinNumber, LOW);
+        analogWrite(pinNumber, 0); 
         Serial.write('e');
         pinState = LOW;
         delay(100);
@@ -200,7 +242,7 @@ static DPin5 pin5;
 static DPin6 pin6;
 static DPin7 pin7;
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   delay(1000);  // Allow time for serial communication to initialize.
   pinMode(2, OUTPUT);
   pinMode(3, OUTPUT);
@@ -208,7 +250,19 @@ void setup() {
   pinMode(5, OUTPUT);
   pinMode(6, OUTPUT);
   pinMode(7, OUTPUT);
+  if (!aht.begin()) {
+    sensorConnected = false;
+  }
+    if (!bmp.begin(0x77)) { // Try 0x76; if that doesn't work, change to 0x77
+    sensorConnected = false;
+  }
+  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,
+                Adafruit_BMP280::SAMPLING_X2,   // Temperature oversampling
+                Adafruit_BMP280::SAMPLING_X16,  // Pressure oversampling
+                Adafruit_BMP280::FILTER_X16,    // Filter coefficient
+                Adafruit_BMP280::STANDBY_MS_500); // Standby time
 }
+
 void resetAllPins() {
   pin2.check = true;
   pin3.check = true;
@@ -225,14 +279,24 @@ void resetSinglePin(){
   if (*wsk == pin6) pin6.check = true;
   if (*wsk == pin7) pin7.check = true;
 }
-char bajt;
-bool singlePinCheck;
 void loop() {
   if(Serial.available()){
     bajt = Serial.read();
     if(bajt == 'Y'){
       singlePinCheck = true;
       bajt = Serial.read();
+    }
+    if(bajt == '+'){
+      pwmUp = true;
+      pwmDown = false;
+    }
+    if(bajt == '-'){
+      pwmDown = true;
+      pwmUp = false;
+    }
+    if(bajt == '='){
+      pwmDown = false;
+      pwmUp = false;
     }
     switch(bajt){
       case 'A':
@@ -303,7 +367,21 @@ void loop() {
         if (wsk != nullptr){
             resetAllPins();
           }
-      break;
+        break;
+      case 'X':
+        //sendData
+        if(sensorConnected){
+          sensors_event_t humidity, temp;
+          aht.getEvent(&humidity, &temp);
+          float pressure = bmp.readPressure() / 100.0F;
+          Serial.println(temp.temperature);
+          delay(10);
+          Serial.println(humidity.relative_humidity);
+          delay(10);
+          Serial.println(pressure);
+          delay(10);
+        }
+        break;
     }
   }
 

@@ -1,6 +1,10 @@
 #pragma once
 #include <iostream>
 #include "serial.h"
+#include <chrono>
+#include <thread>
+#include "Form2.h"
+#include <ctime>
 namespace SHMS {
 
 	using namespace System;
@@ -23,6 +27,9 @@ namespace SHMS {
 		if (pin == "PIN 6") return 'F';
 		return '\0'; // Return null character if no match
 	}
+	int Trackbar2TempValue = 0;
+	int Trackbar4TempValue = 0;
+	int Trackbar5TempValue = 0;
 	
 	/// <summary>
 	/// Summary for MainForm
@@ -41,6 +48,7 @@ namespace SHMS {
 			catch (char &failedToOpenPort) {
 				System::Windows::Forms::MessageBox::Show("Failed to open port!", "Error!", System::Windows::Forms::MessageBoxButtons::OK, System::Windows::Forms::MessageBoxIcon::Error);
 			}
+
 			serial.flush();
 			serial.write('Z');
 		}
@@ -97,8 +105,12 @@ namespace SHMS {
 
 	private: System::Windows::Forms::Label^ label1;
 	private: System::Windows::Forms::Button^ button1;
-	private: System::Windows::Forms::Button^ BUTTON_SAVE;
+
 	private: System::Windows::Forms::Button^ BUTTON_EXIT;
+	private: System::Windows::Forms::DataVisualization::Charting::Chart^ DATA_CHART;
+	private: System::Windows::Forms::Button^ SHOW_DATA_BUTTON;
+
+
 
 
 
@@ -120,6 +132,11 @@ namespace SHMS {
 		/// </summary>
 		void InitializeComponent(void)
 		{
+			System::Windows::Forms::DataVisualization::Charting::ChartArea^ chartArea1 = (gcnew System::Windows::Forms::DataVisualization::Charting::ChartArea());
+			System::Windows::Forms::DataVisualization::Charting::Legend^ legend1 = (gcnew System::Windows::Forms::DataVisualization::Charting::Legend());
+			System::Windows::Forms::DataVisualization::Charting::Series^ series1 = (gcnew System::Windows::Forms::DataVisualization::Charting::Series());
+			System::Windows::Forms::DataVisualization::Charting::Series^ series2 = (gcnew System::Windows::Forms::DataVisualization::Charting::Series());
+			System::Windows::Forms::DataVisualization::Charting::Series^ series3 = (gcnew System::Windows::Forms::DataVisualization::Charting::Series());
 			this->comboBox1 = (gcnew System::Windows::Forms::ComboBox());
 			this->BUTTON_PIN1_STATE = (gcnew System::Windows::Forms::Button());
 			this->TRACKBAR2 = (gcnew System::Windows::Forms::TrackBar());
@@ -133,11 +150,13 @@ namespace SHMS {
 			this->BUTTON_PIN4_STATE = (gcnew System::Windows::Forms::Button());
 			this->label1 = (gcnew System::Windows::Forms::Label());
 			this->button1 = (gcnew System::Windows::Forms::Button());
-			this->BUTTON_SAVE = (gcnew System::Windows::Forms::Button());
 			this->BUTTON_EXIT = (gcnew System::Windows::Forms::Button());
+			this->DATA_CHART = (gcnew System::Windows::Forms::DataVisualization::Charting::Chart());
+			this->SHOW_DATA_BUTTON = (gcnew System::Windows::Forms::Button());
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->TRACKBAR2))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->TRACKBAR5))->BeginInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->TRACKBAR4))->BeginInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->DATA_CHART))->BeginInit();
 			this->SuspendLayout();
 			// 
 			// comboBox1
@@ -168,21 +187,27 @@ namespace SHMS {
 			// TRACKBAR2
 			// 
 			this->TRACKBAR2->BackColor = System::Drawing::SystemColors::Control;
+			this->TRACKBAR2->LargeChange = 1;
 			this->TRACKBAR2->Location = System::Drawing::Point(12, 123);
+			this->TRACKBAR2->Maximum = 9;
 			this->TRACKBAR2->Name = L"TRACKBAR2";
 			this->TRACKBAR2->Size = System::Drawing::Size(205, 45);
 			this->TRACKBAR2->TabIndex = 6;
-			this->TRACKBAR2->Scroll += gcnew System::EventHandler(this, &MainForm::trackBar1_Scroll);
+			this->TRACKBAR2->TickFrequency = 10;
+			this->TRACKBAR2->ValueChanged += gcnew System::EventHandler(this, &MainForm::TRACKBAR2_ValueChanged);
 			// 
 			// TRACKBAR5
 			// 
 			this->TRACKBAR5->BackColor = System::Drawing::SystemColors::Control;
+			this->TRACKBAR5->LargeChange = 1;
 			this->TRACKBAR5->Location = System::Drawing::Point(12, 39);
+			this->TRACKBAR5->Maximum = 9;
 			this->TRACKBAR5->Name = L"TRACKBAR5";
 			this->TRACKBAR5->Size = System::Drawing::Size(205, 45);
 			this->TRACKBAR5->TabIndex = 4;
+			this->TRACKBAR5->TickFrequency = 10;
 			this->TRACKBAR5->Visible = false;
-			this->TRACKBAR5->Scroll += gcnew System::EventHandler(this, &MainForm::TRACKBAR2_Scroll);
+			this->TRACKBAR5->ValueChanged += gcnew System::EventHandler(this, &MainForm::TRACKBAR5_ValueChanged);
 			// 
 			// comboBox2
 			// 
@@ -212,11 +237,14 @@ namespace SHMS {
 			// TRACKBAR4
 			// 
 			this->TRACKBAR4->BackColor = System::Drawing::SystemColors::Control;
+			this->TRACKBAR4->LargeChange = 1;
 			this->TRACKBAR4->Location = System::Drawing::Point(12, 297);
+			this->TRACKBAR4->Maximum = 9;
 			this->TRACKBAR4->Name = L"TRACKBAR4";
 			this->TRACKBAR4->Size = System::Drawing::Size(205, 45);
 			this->TRACKBAR4->TabIndex = 8;
-			this->TRACKBAR4->Scroll += gcnew System::EventHandler(this, &MainForm::trackBar3_Scroll);
+			this->TRACKBAR4->TickFrequency = 10;
+			this->TRACKBAR4->ValueChanged += gcnew System::EventHandler(this, &MainForm::TRACKBAR4_ValueChanged);
 			// 
 			// comboBox3
 			// 
@@ -272,7 +300,7 @@ namespace SHMS {
 			// 
 			this->label1->AutoSize = true;
 			this->label1->ForeColor = System::Drawing::SystemColors::ControlDark;
-			this->label1->Location = System::Drawing::Point(322, 329);
+			this->label1->Location = System::Drawing::Point(12, 360);
 			this->label1->Name = L"label1";
 			this->label1->Size = System::Drawing::Size(134, 13);
 			this->label1->TabIndex = 11;
@@ -280,39 +308,71 @@ namespace SHMS {
 			// 
 			// button1
 			// 
-			this->button1->Location = System::Drawing::Point(255, 180);
+			this->button1->Location = System::Drawing::Point(247, 318);
 			this->button1->Name = L"button1";
-			this->button1->Size = System::Drawing::Size(201, 55);
+			this->button1->Size = System::Drawing::Size(150, 55);
 			this->button1->TabIndex = 12;
-			this->button1->Text = L"Show data";
+			this->button1->Text = L"Download data";
 			this->button1->UseVisualStyleBackColor = true;
-			// 
-			// BUTTON_SAVE
-			// 
-			this->BUTTON_SAVE->Location = System::Drawing::Point(255, 262);
-			this->BUTTON_SAVE->Name = L"BUTTON_SAVE";
-			this->BUTTON_SAVE->Size = System::Drawing::Size(99, 23);
-			this->BUTTON_SAVE->TabIndex = 13;
-			this->BUTTON_SAVE->Text = L"Save";
-			this->BUTTON_SAVE->UseVisualStyleBackColor = true;
+			this->button1->Click += gcnew System::EventHandler(this, &MainForm::DOWNLOAD_DATA_CLICK);
 			// 
 			// BUTTON_EXIT
 			// 
-			this->BUTTON_EXIT->Location = System::Drawing::Point(357, 262);
+			this->BUTTON_EXIT->Location = System::Drawing::Point(591, 319);
 			this->BUTTON_EXIT->Name = L"BUTTON_EXIT";
-			this->BUTTON_EXIT->Size = System::Drawing::Size(99, 23);
+			this->BUTTON_EXIT->Size = System::Drawing::Size(153, 54);
 			this->BUTTON_EXIT->TabIndex = 14;
 			this->BUTTON_EXIT->Text = L"Exit";
 			this->BUTTON_EXIT->UseVisualStyleBackColor = true;
 			this->BUTTON_EXIT->Click += gcnew System::EventHandler(this, &MainForm::BUTTON_EXIT_Click);
 			// 
+			// DATA_CHART
+			// 
+			this->DATA_CHART->BackColor = System::Drawing::SystemColors::Control;
+			this->DATA_CHART->BackSecondaryColor = System::Drawing::Color::Transparent;
+			this->DATA_CHART->BorderlineColor = System::Drawing::Color::Transparent;
+			chartArea1->Name = L"ChartArea1";
+			this->DATA_CHART->ChartAreas->Add(chartArea1);
+			legend1->Name = L"Legend1";
+			this->DATA_CHART->Legends->Add(legend1);
+			this->DATA_CHART->Location = System::Drawing::Point(247, 12);
+			this->DATA_CHART->Name = L"DATA_CHART";
+			series1->ChartArea = L"ChartArea1";
+			series1->Legend = L"Legend1";
+			series1->Name = L"T [*C]";
+			series1->YValuesPerPoint = 2;
+			series2->ChartArea = L"ChartArea1";
+			series2->Legend = L"Legend1";
+			series2->Name = L"H [%]";
+			series3->ChartArea = L"ChartArea1";
+			series3->Legend = L"Legend1";
+			series3->Name = L"P [kPa]";
+			series3->YValuesPerPoint = 32;
+			this->DATA_CHART->Series->Add(series1);
+			this->DATA_CHART->Series->Add(series2);
+			this->DATA_CHART->Series->Add(series3);
+			this->DATA_CHART->Size = System::Drawing::Size(497, 300);
+			this->DATA_CHART->TabIndex = 15;
+			this->DATA_CHART->Text = L"chart1";
+			// 
+			// SHOW_DATA_BUTTON
+			// 
+			this->SHOW_DATA_BUTTON->Location = System::Drawing::Point(420, 319);
+			this->SHOW_DATA_BUTTON->Name = L"SHOW_DATA_BUTTON";
+			this->SHOW_DATA_BUTTON->Size = System::Drawing::Size(150, 55);
+			this->SHOW_DATA_BUTTON->TabIndex = 16;
+			this->SHOW_DATA_BUTTON->Text = L"Show data";
+			this->SHOW_DATA_BUTTON->UseVisualStyleBackColor = true;
+			this->SHOW_DATA_BUTTON->Click += gcnew System::EventHandler(this, &MainForm::SHOW_DATA_BUTTON_Click);
+			// 
 			// MainForm
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(468, 348);
+			this->ClientSize = System::Drawing::Size(756, 384);
+			this->Controls->Add(this->SHOW_DATA_BUTTON);
+			this->Controls->Add(this->DATA_CHART);
 			this->Controls->Add(this->BUTTON_EXIT);
-			this->Controls->Add(this->BUTTON_SAVE);
 			this->Controls->Add(this->button1);
 			this->Controls->Add(this->TRACKBAR5);
 			this->Controls->Add(this->comboBox1);
@@ -326,6 +386,7 @@ namespace SHMS {
 			this->Controls->Add(this->label1);
 			this->Controls->Add(this->BUTTON_PIN4_STATE);
 			this->Controls->Add(this->TRACKBAR4);
+			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedSingle;
 			this->Name = L"MainForm";
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
 			this->Text = L"MainForm";
@@ -333,6 +394,7 @@ namespace SHMS {
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->TRACKBAR2))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->TRACKBAR5))->EndInit();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->TRACKBAR4))->EndInit();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->DATA_CHART))->EndInit();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -365,6 +427,22 @@ namespace SHMS {
 			handlePin('E', "PIN 5 (PWM)", buttonLabel, comboBox);
 			handlePin('F', "PIN 6", buttonLabel, comboBox);
 		}
+		void updatePWM(System::Windows::Forms::TrackBar^ trackbarValue, int *trackbarLastValue, char pinChar) {
+			if (trackbarValue->Value > *trackbarLastValue) {
+				serial.write('+'); //Start the PWM increase.
+				for (int i = 0; i < trackbarValue->Value - *trackbarLastValue; i++) {
+					serial.write(pinChar); //Arduino will increase the PWM value.
+				}
+			}
+			else if (trackbarValue->Value < *trackbarLastValue) {
+				serial.write('-'); //Start the PWM decrease.
+				for (int i = 0; i < *trackbarLastValue - trackbarValue->Value; i++) {
+					serial.write(pinChar); //Arduino will decrease the PWM value.
+				}
+			}
+			*trackbarLastValue = trackbarValue->Value;
+			serial.write('='); //Stop the PWM update in Arduino.
+		}
 		private: System::Void MainForm_Load(System::Object^ sender, System::EventArgs^ e) {
 			// The first byte (Z) is being sent in the MainForm class constructor.
 			try {
@@ -390,7 +468,7 @@ namespace SHMS {
 				std::exit(1);
 			}
 		}
-
+		
 		//BUTTON_PIN1_STATE
 		private: System::Void BUTTON1_Click(System::Object^ sender, System::EventArgs^ e) { 
 			System::String^ selectedPin = comboBox1->Text;
@@ -523,9 +601,11 @@ namespace SHMS {
 				}
 			}
 		}
-		private: System::Void TRACKBAR2_Scroll(System::Object^ sender, System::EventArgs^ e) { //TRACKBAR 2
+		private: System::Void TRACKBAR2_ValueChanged(System::Object^ sender, System::EventArgs^ e) { //TRACKBAR 2
 			serial.flush();
+			updatePWM(TRACKBAR2, &Trackbar2TempValue, 'B');
 		}
+
 		//COMBO 2
 		private: System::Void comboBox2_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 			serial.flush();
@@ -665,8 +745,9 @@ namespace SHMS {
 				}
 			}
 		}
-		private: System::Void trackBar1_Scroll(System::Object^ sender, System::EventArgs^ e) { //TRACKBAR 4
+		private: System::Void TRACKBAR4_ValueChanged(System::Object^ sender, System::EventArgs^ e) {
 			serial.flush();
+			updatePWM(TRACKBAR4, &Trackbar4TempValue, 'D');
 		}
 		//COMBO 3
 		private: System::Void comboBox3_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
@@ -804,8 +885,9 @@ namespace SHMS {
 				}
 			}
 		}
-		private: System::Void trackBar3_Scroll(System::Object^ sender, System::EventArgs^ e) { //TRACKBAR 5
+		private: System::Void TRACKBAR5_ValueChanged(System::Object^ sender, System::EventArgs^ e) { //TRACKBAR 5
 			serial.flush();
+			updatePWM(TRACKBAR5, &Trackbar5TempValue, 'E');
 		}
 		//COMBO 4
 		private: System::Void comboBox4_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
@@ -945,6 +1027,44 @@ namespace SHMS {
 		}
 	private: System::Void BUTTON_EXIT_Click(System::Object^ sender, System::EventArgs^ e) {
 		std::exit(0);
+	}
+	public: System::Void DOWNLOAD_DATA_CLICK(System::Object^ sender, System::EventArgs^ e) {
+		time_t timestamp;
+		Form2^ form2 = gcnew Form2();
+		form2->Show();
+		serial.write('X');
+		form2->TEMPERATURA_DANE_LABEL->Text = gcnew String((serial.readString()).c_str());
+		form2->HUMIDITY_DATA_LABEL->Text = gcnew String((serial.readString()).c_str());
+		form2->PRESSURE_DATA_LABEL->Text = gcnew String((serial.readString()).c_str());
+		time(&timestamp);
+		form2->DATE_DATA_LABEL->Text = gcnew String(ctime(&timestamp));
+	}
+
+	private: System::Void SHOW_DATA_BUTTON_Click(System::Object^ sender, System::EventArgs^ e) {
+		double temperatureData = 0.0;
+		double humidityData = 0.0;
+		double pressureData = 0.0;
+		std::string dateData;
+		std::ifstream file("weatherData.txt");
+		this->DATA_CHART->Series["T [*C]"]->Points->Clear();
+		this->DATA_CHART->Series["H [%]"]->Points->Clear();
+		this->DATA_CHART->Series["P [kPa]"]->Points->Clear();
+		if (!file.is_open()) {
+			MessageBox::Show("Failed to open the file for reading.", "Error", MessageBoxButtons::OK, MessageBoxIcon::Error);
+		}
+		else {
+			file >> temperatureData;
+			file >> humidityData;
+			file >> pressureData;
+			file.ignore();
+			if (std::getline(file, dateData)) {
+				System::String^ managedDateData = gcnew System::String(dateData.c_str());
+				this->DATA_CHART->Series["T [*C]"]->Points->AddXY(managedDateData, temperatureData);
+				this->DATA_CHART->Series["H [%]"]->Points->Add(humidityData);
+				this->DATA_CHART->Series["P [kPa]"]->Points->Add(pressureData / 10);
+			}
+		file.close();
+		}
 	}
 };
 }
